@@ -1,0 +1,19 @@
+{
+    "parties_jouees": 2,
+    "victoires_joueur": 1,
+    "victoires_ia": 1,
+    "matchs_nuls": 0,
+    "historique": [
+        {
+            "date": "2025-04-07 12:13:17",
+            "gagnant": "X",
+            "duree": 3.89
+        },
+        {
+            "date": "2025-04-07 12:13:27",
+            "gagnant": "O",
+            "duree": 9.14
+        }
+    ],
+    "derniere_mise_a_jour": "2025-04-07 12:13:27"
+}

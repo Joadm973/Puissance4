@@ -1,0 +1,32 @@
+constants.py :
+C'est le fichier de configuration qui centralise toutes les constantes
+LIGNES, COLONNES, TAILLE_CASE : définissent la taille du plateau
+JOUEUR_X, JOUEUR_O, VIDE : symboles utilisés dans le jeu
+COULEURS : dictionnaire contenant toutes les couleurs de l'interface
+STYLE_BOUTON : style commun pour tous les boutons
+
+game.py :
+Contient la classe Puissance4 qui gère toute la logique du jeu
+__init__ : initialise le plateau vide et les scores
+placer_jeton : place un jeton dans une colonne
+verifier_victoire : vérifie les 4 directions possibles de victoire
+plateau_plein : vérifie si le plateau est rempli
+changer_joueur : alterne entre les joueurs
+reinitialiser_jeu : vide le plateau pour une nouvelle partie
+incrementer_score : met à jour le score du gagnant
+
+gui.py :
+Contient la classe Puissance4GUI qui gère l'interface graphique
+__init__ : crée la fenêtre et tous les widgets
+dessiner_plateau : dessine le plateau et les jetons
+gerer_survol : gère l'effet de survol sur les colonnes
+gerer_clic : gère les clics du joueur
+jouer_ia : gère les coups de l'ordinateur
+changer_mode_ia : active/désactive le mode IA
+mettre_a_jour_score : met à jour l'affichage des scores
+reinitialiser_jeu : réinitialise l'affichage pour une nouvelle partie
+
+main.py :
+Point d'entrée du programme
+Crée une instance de l'interface graphique
+Lance la boucle principale du jeu
