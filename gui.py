@@ -160,6 +160,32 @@ class Puissance4GUI:
         )
         self.bouton_mode_ia.pack(side=tk.LEFT, padx=10)
         
+        # Bouton pour voir les patterns appris par l'IA
+        self.bouton_patterns = tk.Button(
+            self.frame_controles,
+            text="🧠 Patterns IA",
+            command=self.afficher_patterns_ia,
+            **STYLE_BOUTON,
+            fg=COULEURS['fond'],
+            bg=COULEURS['bouton'],
+            activebackground=COULEURS['bouton_hover'],
+            activeforeground=COULEURS['fond']
+        )
+        self.bouton_patterns.pack(side=tk.LEFT, padx=10)
+        
+        # Bouton pour le mode IA vs IA
+        self.bouton_ia_vs_ia = tk.Button(
+            self.frame_controles,
+            text="🤖 vs 🤖",
+            command=self.changer_mode_ia_vs_ia,
+            **STYLE_BOUTON,
+            fg=COULEURS['fond'],
+            bg=COULEURS['bouton'],
+            activebackground=COULEURS['bouton_hover'],
+            activeforeground=COULEURS['fond']
+        )
+        self.bouton_ia_vs_ia.pack(side=tk.LEFT, padx=10)
+        
         # Bouton Quitter avec icône
         self.bouton_quitter = tk.Button(
             self.frame_controles,
@@ -334,6 +360,100 @@ class Puissance4GUI:
             # Remettre à jour le label du joueur
             self.label_joueur.config(text=f"Tour du Joueur {self.jeu.joueur_actuel}")
 
+    def jouer_coup_ia_vs_ia(self):
+        """Fait jouer IA contre IA en mode automatique"""
+        if not self.jeu.mode_ia_vs_ia:
+            # Si le mode a été désactivé entre-temps, on arrête
+            return
+            
+        # Mettre à jour le label pour montrer quelle IA réfléchit
+        joueur_actuel_nom = "IA 1 (X)" if self.jeu.joueur_actuel == JOUEUR_X else "IA 2 (O)"
+        self.label_joueur.config(text=f"{joueur_actuel_nom} réfléchit... 🤔")
+        self.window.update()
+        
+        # Choisir et jouer le coup
+        colonne = self.jeu.choisir_meilleur_coup()
+        if colonne is not None:
+            # Ajouter un délai pour visualiser les coups
+            self.window.after(500, lambda col=colonne: self.executer_coup_ia_vs_ia(col))
+        else:
+            # Si aucun coup valide, considérer comme un match nul
+            self.fin_partie_avec_message('N')
+            
+    def executer_coup_ia_vs_ia(self, colonne):
+        """Execute un coup dans le mode IA vs IA après un délai"""
+        if not self.jeu.mode_ia_vs_ia:
+            return
+            
+        resultat = self.jeu.placer_jeton(colonne)
+        
+        if resultat == 'victoire':
+            self.jeu.incrementer_score()
+            self.mettre_a_jour_score()
+            self.dessiner_plateau()
+            self.mettre_a_jour_interface()
+            self.window.update()
+            
+            # Animation des jetons gagnants et fin de partie
+            self.mettre_en_evidence_victoire_ia_vs_ia()
+            return
+            
+        elif resultat == 'nul':
+            self.dessiner_plateau()
+            self.mettre_a_jour_interface()
+            self.window.update()
+            self.fin_partie_avec_message('N')
+            return
+            
+        elif resultat:
+            self.jeu.changer_joueur()
+            self.dessiner_plateau()
+            self.mettre_a_jour_interface()
+            
+            # Programmer le prochain coup avec un délai
+            self.window.after(800, self.jouer_coup_ia_vs_ia)
+            
+    def mettre_en_evidence_victoire_ia_vs_ia(self):
+        """Version spéciale de la mise en évidence pour le mode IA vs IA"""
+        jetons_gagnants = self.jeu.trouver_jetons_gagnants()
+        couleur_originale = COULEURS[self.jeu.joueur_actuel]
+        outline_original = COULEURS['bordure']
+        
+        def animation_clignotement(compteur=0):
+            if compteur < 6:  # 3 clignotements (6 changements)
+                # Alterner entre les couleurs
+                fill_color = '#FFD700' if compteur % 2 == 0 else couleur_originale
+                outline_color = '#FF4500' if compteur % 2 == 0 else outline_original
+                width = 3 if compteur % 2 == 0 else 1
+                
+                for ligne, col in jetons_gagnants:
+                    self.canvas.itemconfig(
+                        self.cases[ligne][col],
+                        fill=fill_color,
+                        outline=outline_color,
+                        width=width
+                    )
+                self.canvas.update()
+                self.window.after(200, lambda: animation_clignotement(compteur + 1))
+            else:
+                # Animation terminée
+                joueur_gagnant = "IA 1 (X)" if self.jeu.joueur_actuel == JOUEUR_X else "IA 2 (O)"
+                message = f"{joueur_gagnant} a gagné !"
+                try:
+                    stats = self.jeu.fin_partie(self.jeu.joueur_actuel)
+                    messagebox.showinfo("Fin de partie", message)
+                except Exception as e:
+                    print(f"Erreur dans fin_partie: {e}")
+                    print(traceback.format_exc())
+                finally:
+                    self.reinitialiser_jeu()
+                    # Si le mode IA vs IA est toujours actif, lancer une nouvelle partie
+                    if self.jeu.mode_ia_vs_ia:
+                        self.window.after(1000, self.jouer_coup_ia_vs_ia)
+        
+        # Démarrer l'animation
+        animation_clignotement()
+
     def mettre_en_evidence_victoire(self):
         """Met en évidence les jetons gagnants"""
         jetons_gagnants = self.jeu.trouver_jetons_gagnants()
@@ -385,6 +505,31 @@ class Puissance4GUI:
             text="Mode IA: Activé" if self.jeu.mode_ia else "Mode IA: Désactivé",
             bg='#2980B9' if self.jeu.mode_ia else COULEURS['bouton']
         )
+
+    def changer_mode_ia_vs_ia(self):
+        """Active ou désactive le mode IA vs IA"""
+        # Désactiver le mode joueur vs IA si on active le mode IA vs IA
+        if not self.jeu.mode_ia_vs_ia:
+            self.jeu.mode_ia = False
+            self.bouton_mode_ia.config(
+                text="Mode IA: Désactivé",
+                bg=COULEURS['bouton']
+            )
+            
+        self.jeu.mode_ia_vs_ia = not self.jeu.mode_ia_vs_ia
+        
+        # Mettre à jour l'apparence du bouton
+        self.bouton_ia_vs_ia.config(
+            text="IA vs IA: Activé" if self.jeu.mode_ia_vs_ia else "🤖 vs 🤖",
+            bg='#9B59B6' if self.jeu.mode_ia_vs_ia else COULEURS['bouton']
+        )
+        
+        # Si on active ce mode, lancer automatiquement une partie
+        if self.jeu.mode_ia_vs_ia:
+            self.reinitialiser_jeu()
+            # Laisser l'interface se rafraîchir avant de commencer
+            self.window.update()
+            self.window.after(500, self.jouer_coup_ia_vs_ia)
 
     def mettre_a_jour_score(self):
         self.label_score_x.config(text=f"Joueur {JOUEUR_X}: {self.jeu.scores[JOUEUR_X]}")
@@ -487,6 +632,162 @@ class Puissance4GUI:
                 bg=COULEURS['fond'],
                 fg=COULEURS['texte']
             ).pack(anchor='w')
+
+    def afficher_patterns_ia(self):
+        """Affiche les patterns d'apprentissage de l'IA dans une fenêtre"""
+        # Créer une nouvelle fenêtre
+        fenetre_patterns = tk.Toplevel(self.window)
+        fenetre_patterns.title("Patterns appris par l'IA")
+        fenetre_patterns.configure(bg=COULEURS['fond'])
+        fenetre_patterns.geometry("600x400")
+        
+        # Frame principal
+        frame_principal = tk.Frame(fenetre_patterns, bg=COULEURS['fond'], padx=20, pady=20)
+        frame_principal.pack(fill=tk.BOTH, expand=True)
+        
+        # Titre
+        tk.Label(
+            frame_principal,
+            text="Patterns d'apprentissage de l'IA",
+            font=('Arial', 14, 'bold'),
+            bg=COULEURS['fond'],
+            fg=COULEURS['texte']
+        ).pack(pady=(0, 20))
+        
+        # Vérifier si des patterns sont disponibles
+        if not self.jeu.patterns_appris or not (
+            'X' in self.jeu.patterns_appris and 
+            'O' in self.jeu.patterns_appris and
+            (self.jeu.patterns_appris['X']['frequence'] or 
+             self.jeu.patterns_appris['O']['frequence'])
+        ):
+            tk.Label(
+                frame_principal,
+                text="Aucun pattern d'apprentissage disponible.\nJouez quelques parties pour que l'IA apprenne.",
+                font=('Arial', 12),
+                bg=COULEURS['fond'],
+                fg=COULEURS['texte']
+            ).pack(pady=20)
+            return
+            
+        # Frame pour les patterns du joueur
+        frame_joueur = tk.LabelFrame(
+            frame_principal,
+            text="Patterns du Joueur X",
+            font=('Arial', 12, 'bold'),
+            bg=COULEURS['fond'],
+            fg=COULEURS[JOUEUR_X]
+        )
+        frame_joueur.pack(fill=tk.X, pady=10)
+        
+        # Nombre total de coups enregistrés pour le joueur
+        nb_coups_joueur = len(self.jeu.patterns_appris['X']['coups']) if 'X' in self.jeu.patterns_appris else 0
+        tk.Label(
+            frame_joueur,
+            text=f"Nombre de coups enregistrés: {nb_coups_joueur}",
+            font=('Arial', 10),
+            bg=COULEURS['fond'],
+            fg=COULEURS['texte']
+        ).pack(anchor='w', padx=10, pady=5)
+        
+        # Positions fréquentes du joueur (top 5)
+        if 'X' in self.jeu.patterns_appris and self.jeu.patterns_appris['X']['frequence']:
+            positions_joueur = sorted(
+                self.jeu.patterns_appris['X']['frequence'].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+            
+            tk.Label(
+                frame_joueur,
+                text="Positions fréquentes:",
+                font=('Arial', 10, 'bold'),
+                bg=COULEURS['fond'],
+                fg=COULEURS['texte']
+            ).pack(anchor='w', padx=10, pady=5)
+            
+            for pos, freq in positions_joueur:
+                tk.Label(
+                    frame_joueur,
+                    text=f"Position {pos}: utilisée {freq} fois",
+                    font=('Arial', 10),
+                    bg=COULEURS['fond'],
+                    fg=COULEURS['texte']
+                ).pack(anchor='w', padx=30, pady=2)
+        
+        # Frame pour les patterns de l'IA
+        frame_ia = tk.LabelFrame(
+            frame_principal,
+            text="Patterns de l'IA (O)",
+            font=('Arial', 12, 'bold'),
+            bg=COULEURS['fond'],
+            fg=COULEURS[JOUEUR_O]
+        )
+        frame_ia.pack(fill=tk.X, pady=10)
+        
+        # Nombre total de coups enregistrés pour l'IA
+        nb_coups_ia = len(self.jeu.patterns_appris['O']['coups']) if 'O' in self.jeu.patterns_appris else 0
+        tk.Label(
+            frame_ia,
+            text=f"Nombre de coups enregistrés: {nb_coups_ia}",
+            font=('Arial', 10),
+            bg=COULEURS['fond'],
+            fg=COULEURS['texte']
+        ).pack(anchor='w', padx=10, pady=5)
+        
+        # Positions fréquentes de l'IA (top 5)
+        if 'O' in self.jeu.patterns_appris and self.jeu.patterns_appris['O']['frequence']:
+            positions_ia = sorted(
+                self.jeu.patterns_appris['O']['frequence'].items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:5]
+            
+            tk.Label(
+                frame_ia,
+                text="Positions fréquentes:",
+                font=('Arial', 10, 'bold'),
+                bg=COULEURS['fond'],
+                fg=COULEURS['texte']
+            ).pack(anchor='w', padx=10, pady=5)
+            
+            for pos, freq in positions_ia:
+                tk.Label(
+                    frame_ia,
+                    text=f"Position {pos}: utilisée {freq} fois",
+                    font=('Arial', 10),
+                    bg=COULEURS['fond'],
+                    fg=COULEURS['texte']
+                ).pack(anchor='w', padx=30, pady=2)
+                
+        # Explication du fonctionnement de l'apprentissage
+        frame_explication = tk.LabelFrame(
+            frame_principal,
+            text="Comment fonctionne l'apprentissage",
+            font=('Arial', 12, 'bold'),
+            bg=COULEURS['fond'],
+            fg=COULEURS['texte']
+        )
+        frame_explication.pack(fill=tk.X, pady=10)
+        
+        texte_explication = """
+        L'IA apprend des parties précédentes en :
+        - Mémorisant tous les coups joués dans les parties gagnantes
+        - Identifiant les positions qui mènent fréquemment à la victoire
+        - Adaptant sa stratégie pour favoriser ces positions
+        - Évitant les positions qui ont souvent mené à la victoire de l'adversaire
+        
+        Plus vous jouez, plus l'IA devient intelligente !
+        """
+        
+        tk.Label(
+            frame_explication,
+            text=texte_explication,
+            font=('Arial', 9),
+            bg=COULEURS['fond'],
+            fg=COULEURS['texte'],
+            justify=tk.LEFT
+        ).pack(anchor='w', padx=10, pady=5)
 
     def mettre_a_jour_interface(self):
         """Met à jour l'affichage du plateau de jeu"""

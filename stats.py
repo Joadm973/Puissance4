@@ -102,13 +102,39 @@ class StatsManager:
             if partie['gagnant'] in ['X', 'O']:
                 # Ajouter l'analyse des coups de cette partie
                 if 'coups' in partie:  # Si les coups ont été enregistrés
-                    patterns[partie['gagnant']]['coups'].extend(partie['coups'])
-                    
-                    # Compter la fréquence des positions gagnantes
-                    for coup in partie['coups']:
-                        pos = str(coup)  # Convertir la position en string pour la clé
-                        patterns[partie['gagnant']]['frequence'][pos] = \
-                            patterns[partie['gagnant']]['frequence'].get(pos, 0) + 1
+                    try:
+                        # Convertir de string à liste si nécessaire
+                        coups = partie['coups']
+                        
+                        # Vérifier le type de coups
+                        if isinstance(coups, (float, int)) or coups == 'nan':
+                            # Skip this entry - it's a number or NaN, not a list
+                            continue
+                            
+                        if isinstance(coups, str):
+                            # Le format sera quelque chose comme "[(0, 1), (1, 2), ...]"
+                            try:
+                                import ast
+                                coups = ast.literal_eval(coups)
+                                # Vérifier que c'est bien une liste
+                                if not isinstance(coups, list):
+                                    continue
+                            except (SyntaxError, ValueError):
+                                # Si la conversion échoue, ignorer cette entrée
+                                print(f"Format de coups invalide: {coups}")
+                                continue
+                        
+                        # Maintenant que nous avons une liste valide, traiter les coups
+                        patterns[partie['gagnant']]['coups'].extend(coups)
+                        
+                        # Compter la fréquence des positions gagnantes
+                        for coup in coups:
+                            pos = str(coup)  # Convertir la position en string pour la clé
+                            patterns[partie['gagnant']]['frequence'][pos] = \
+                                patterns[partie['gagnant']]['frequence'].get(pos, 0) + 1
+                                
+                    except Exception as e:
+                        print(f"Erreur lors de l'analyse des coups: {e}, valeur: {partie.get('coups', 'Non défini')}")
         
         return patterns
 
@@ -130,7 +156,7 @@ class CSVStatsManager:
             # Créer le fichier CSV avec les en-têtes
             with open(self.filename, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['date', 'gagnant', 'duree'])
+                writer.writerow(['date', 'gagnant', 'duree', 'coups'])
             return
             
         try:
@@ -151,7 +177,7 @@ class CSVStatsManager:
             # Recréer le fichier en cas d'erreur
             with open(self.filename, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['date', 'gagnant', 'duree'])
+                writer.writerow(['date', 'gagnant', 'duree', 'coups'])
                 
     def sauvegarder_stats(self):
         """Sauvegarde les statistiques dans le fichier CSV"""
@@ -165,13 +191,17 @@ class CSVStatsManager:
         except Exception as e:
             print(f"Erreur lors de la sauvegarde des statistiques: {e}")
             
-    def ajouter_partie(self, gagnant, duree):
+    def ajouter_partie(self, gagnant, duree, coups=None):
         """Ajoute une nouvelle partie aux statistiques"""
         nouvelle_partie = {
             'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'gagnant': gagnant,
             'duree': duree
         }
+        
+        # Ajouter les coups si disponibles
+        if coups:
+            nouvelle_partie['coups'] = str(coups)  # Convertir la liste en string pour CSV
         
         self.stats['historique'].append(nouvelle_partie)
         self.stats['parties_jouées'] += 1
@@ -184,6 +214,7 @@ class CSVStatsManager:
             self.stats['matchs_nuls'] += 1
             
         self.sauvegarder_stats()
+        return self.get_statistiques()
         
     def get_statistiques(self):
         """Retourne les statistiques générales"""
@@ -212,20 +243,51 @@ class CSVStatsManager:
         }
         self.sauvegarder_stats()
         
-    def analyser_coups_gagnants(self):
-        """Analyse les coups gagnants à partir des statistiques"""
-        if not self.stats['historique']:
-            return {}
-            
-        # Créer un DataFrame avec les statistiques
-        df = pd.DataFrame(self.stats['historique'])
+    def analyser_historique_victoires(self):
+        """Analyse l'historique des parties pour identifier les patterns gagnants"""
+        historique = self.stats['historique']
+        patterns = {
+            'X': {'coups': [], 'frequence': {}},  # Patterns du joueur
+            'O': {'coups': [], 'frequence': {}}   # Patterns de l'IA
+        }
         
-        # Filtrer uniquement les victoires de l'IA
-        victoires_ia = df[df['gagnant'] == 'O']
+        # Analyser chaque partie gagnante
+        for partie in historique:
+            if partie['gagnant'] in ['X', 'O']:
+                # Ajouter l'analyse des coups de cette partie
+                if 'coups' in partie:  # Si les coups ont été enregistrés
+                    try:
+                        # Convertir de string à liste si nécessaire
+                        coups = partie['coups']
+                        
+                        # Vérifier le type de coups
+                        if isinstance(coups, (float, int)) or coups == 'nan':
+                            # Skip this entry - it's a number or NaN, not a list
+                            continue
+                            
+                        if isinstance(coups, str):
+                            # Le format sera quelque chose comme "[(0, 1), (1, 2), ...]"
+                            try:
+                                import ast
+                                coups = ast.literal_eval(coups)
+                                # Vérifier que c'est bien une liste
+                                if not isinstance(coups, list):
+                                    continue
+                            except (SyntaxError, ValueError):
+                                # Si la conversion échoue, ignorer cette entrée
+                                print(f"Format de coups invalide: {coups}")
+                                continue
+                        
+                        # Maintenant que nous avons une liste valide, traiter les coups
+                        patterns[partie['gagnant']]['coups'].extend(coups)
+                        
+                        # Compter la fréquence des positions gagnantes
+                        for coup in coups:
+                            pos = str(coup)  # Convertir la position en string pour la clé
+                            patterns[partie['gagnant']]['frequence'][pos] = \
+                                patterns[partie['gagnant']]['frequence'].get(pos, 0) + 1
+                                
+                    except Exception as e:
+                        print(f"Erreur lors de l'analyse des coups: {e}, valeur: {partie.get('coups', 'Non défini')}")
         
-        if len(victoires_ia) == 0:
-            return {}
-            
-        # Analyser les coups gagnants
-        # (Cette partie sera implémentée plus tard avec l'IA)
-        return {}
+        return patterns
