@@ -1,81 +1,65 @@
-# Dimensions du plateau
-LIGNES = 6
-COLONNES = 7
-TAILLE_CASE = 60
+# Game constants
+ROWS = 6
+COLUMNS = 7
+CELL_SIZE = 80
 
-# Symboles des joueurs
-JOUEUR_X = 'X'
-JOUEUR_O = 'O'
-VIDE = ' '
+# Players
+PLAYER_X = 'X'
+PLAYER_O = 'O'
+EMPTY = ' '
 
-# Couleurs par défaut
-COULEURS = {
-    'X': '#E74C3C',  # Rouge vif
-    'O': '#3498DB',  # Bleu clair
-    ' ': '#34495E',  # Gris bleuté
-    'hover': '#95A5A6',  # Gris clair
-    'fond': '#2C3E50',  # Bleu foncé
-    'plateau': '#34495E',  # Gris bleuté
-    'bouton': '#2ECC71',  # Vert
-    'bouton_hover': '#27AE60',  # Vert foncé
-    'texte': '#ECF0F1',  # Blanc cassé
-    'bordure': '#1A2530',  # Bleu très foncé
-    'ombre': '#1A2530',  # Bleu très foncé
-    'fond_stats': '#2C3E50',  # Bleu foncé
-    'fond_graphiques': '#2C3E50',  # Bleu foncé
-    'titre': '#ECF0F1',  # Blanc cassé
-    'sous_titre': '#BDC3C7',  # Gris clair
-    'warning': '#E74C3C',  # Rouge
-    'success': '#2ECC71'  # Vert
+# Colors
+COLORS = {
+    'background': '#1E1E1E',
+    'text': '#EFEFEF',
+    'board': '#2C2C2C',
+    'border': '#3A3A3A',
+    'stats_background': '#272727',
+    'button': '#3498DB',
+    'button_hover': '#2980B9',
+    'warning': '#E74C3C',
+    'hover': '#CCCCCC50',
+    PLAYER_X: '#FF6347',  # Red
+    PLAYER_O: '#5DADE2',  # Blue
+    EMPTY: '#2C2C2C'      # Dark gray (same as board)
 }
 
-# Style des boutons
-STYLE_BOUTON = {
-    'font': ('Arial', 10, 'bold'),
-    'relief': 'flat',
-    'padx': 15,
-    'pady': 5,
-    'borderwidth': 0,
-    'highlightthickness': 0
-}
-
-# Style des labels
-STYLE_LABEL = {
+# Styles
+BUTTON_STYLE = {
     'font': ('Arial', 12),
-    'bg': COULEURS['fond'],
-    'fg': COULEURS['texte'],
-    'padx': 5,
-    'pady': 2
+    'borderwidth': 0,
+    'relief': 'flat',
+    'padx': 10,
+    'pady': 5
 }
 
-# Style des titres
-STYLE_TITRE = {
-    'font': ('Arial', 16, 'bold'),
-    'bg': COULEURS['fond'],
-    'fg': COULEURS['titre'],
+LABEL_STYLE = {
+    'font': ('Arial', 12),
+    'bg': COLORS['background'],
+    'fg': COLORS['text'],
     'padx': 5,
     'pady': 5
 }
 
-# Style des sous-titres
-STYLE_SOUS_TITRE = {
-    'font': ('Arial', 14, 'bold'),
-    'bg': COULEURS['fond'],
-    'fg': COULEURS['sous_titre'],
-    'padx': 5,
-    'pady': 3
-}
-
-# Style des frames
-STYLE_FRAME = {
-    'bg': COULEURS['fond'],
-    'padx': 20,
+TITLE_STYLE = {
+    'font': ('Arial', 24, 'bold'),
+    'bg': COLORS['background'],
+    'fg': COLORS['text'],
+    'padx': 10,
     'pady': 10
 }
 
-# Style du canvas
-STYLE_CANVAS = {
-    'bg': COULEURS['plateau'],
+SUBTITLE_STYLE = {
+    'font': ('Arial', 14, 'bold'),
+    'bg': COLORS['background'],
+    'fg': COLORS['text'],
+    'padx': 5,
+    'pady': 5
+}
+
+CANVAS_STYLE = {
+    'bg': COLORS['board'],
     'highlightthickness': 0,
-    'borderwidth': 0
-} 
+    'borderwidth': 2,
+    'relief': 'ridge'
+}

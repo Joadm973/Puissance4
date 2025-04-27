@@ -3,807 +3,934 @@ from tkinter import messagebox, ttk
 import random
 import traceback
 from constants import *
-from game import Puissance4
-from visualisation import VisualisationStats
+from game import Connect4
+from visualisation import StatsVisualization
 
-class Puissance4GUI:
+class Connect4GUI:
     def __init__(self):
-        self.window = tk.Tk()
-        self.window.title("Puissance 4")
-        self.window.configure(bg=COULEURS['fond'])
+        # Check and fix potential issues in initialization
+        self.root = tk.Tk()
+        self.root.title("Connect 4")
+        self.root.configure(bg=COLORS['background'])
         
-        # Style global
+        # Set minimum window size to ensure all elements are visible
+        self.root.minsize(COLUMNS * CELL_SIZE + 100, ROWS * CELL_SIZE + 400)  # Increased minimum height
+        
+        # Global style
         style = ttk.Style()
-        style.configure('TButton', **STYLE_BOUTON)
-        style.configure('TLabel', **STYLE_LABEL)
+        style.configure('TButton', **BUTTON_STYLE)
+        style.configure('TLabel', **LABEL_STYLE)
         
-        self.jeu = Puissance4()
-        # Initialisons temps_debut lors de la création de l'instance
-        import time
-        self.jeu.temps_debut = time.time()
-        self.visualisation = VisualisationStats(self.jeu.stats_manager)
+        try:
+            self.game = Connect4()
+        except Exception as e:
+            print(f"Error initializing game: {e}")
+            # Create a fallback game object or initialize with None
+            self.game = None
+            
+        # Only proceed with visualization if game was initialized successfully
+        if self.game is not None:
+            self.visualization = StatsVisualization(self.game.stats_manager)
+        else:
+            # Create a fallback visualization or skip it
+            self.visualization = None
         
-        # Frame principale avec ombre
-        self.frame_principal = tk.Frame(self.window, bg=COULEURS['fond'], padx=30, pady=30)
-        self.frame_principal.pack(expand=True, fill=tk.BOTH)
+        # Main frame with shadow
+        self.main_frame = tk.Frame(self.root, bg=COLORS['background'], padx=30, pady=30)
+        self.main_frame.pack(expand=True, fill=tk.BOTH)
         
-        # Titre du jeu
-        self.label_titre = tk.Label(
-            self.frame_principal,
-            text="PUISSANCE 4",
-            **STYLE_TITRE
+        # Game title
+        self.title_label = tk.Label(
+            self.main_frame,
+            text="CONNECT 4",
+            **TITLE_STYLE
         )
-        self.label_titre.pack(pady=(0, 20))
+        self.title_label.pack(pady=(0, 20))
         
-        # Frame pour le score et les stats avec fond légèrement plus clair
-        self.frame_score = tk.Frame(
-            self.frame_principal,
-            bg=COULEURS['fond_stats'],
+        # Frame for score and stats with slightly lighter background
+        self.score_frame = tk.Frame(
+            self.main_frame,
+            bg=COLORS['stats_background'],
             padx=20,
             pady=15,
             relief='flat',
             borderwidth=1
         )
-        self.frame_score.pack(fill=tk.X, pady=(0, 20))
+        self.score_frame.pack(fill=tk.X, pady=(0, 20))
         
-        # Labels pour le score avec style amélioré
-        score_x_style = STYLE_LABEL.copy()
-        score_x_style['fg'] = COULEURS[JOUEUR_X]
-        self.label_score_x = tk.Label(
-            self.frame_score,
-            text=f"Joueur {JOUEUR_X}: 0",
+        # Labels for score with improved style
+        score_x_style = LABEL_STYLE.copy()
+        score_x_style['fg'] = COLORS[PLAYER_X]
+        self.score_x_label = tk.Label(
+            self.score_frame,
+            text=f"Player {PLAYER_X}: 0",
             **score_x_style
         )
-        self.label_score_x.pack(side=tk.LEFT, padx=20)
+        self.score_x_label.pack(side=tk.LEFT, padx=20)
         
-        score_o_style = STYLE_LABEL.copy()
-        score_o_style['fg'] = COULEURS[JOUEUR_O]
-        self.label_score_o = tk.Label(
-            self.frame_score,
-            text=f"Joueur {JOUEUR_O}: 0",
+        score_o_style = LABEL_STYLE.copy()
+        score_o_style['fg'] = COLORS[PLAYER_O]
+        self.score_o_label = tk.Label(
+            self.score_frame,
+            text=f"Player {PLAYER_O}: 0",
             **score_o_style
         )
-        self.label_score_o.pack(side=tk.LEFT, padx=20)
+        self.score_o_label.pack(side=tk.LEFT, padx=20)
 
-        # Frame pour les boutons d'action
-        self.frame_actions = tk.Frame(self.frame_score, bg=COULEURS['fond_stats'])
-        self.frame_actions.pack(side=tk.RIGHT, padx=20)
+        # Frame for action buttons
+        self.actions_frame = tk.Frame(self.score_frame, bg=COLORS['stats_background'])
+        self.actions_frame.pack(side=tk.RIGHT, padx=20)
 
-        # Bouton Statistiques avec icône
-        self.bouton_stats = tk.Button(
-            self.frame_actions,
-            text="📊 Statistiques",
-            command=self.afficher_stats,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+        # Statistics button with icon
+        self.stats_button = tk.Button(
+            self.actions_frame,
+            text="📊 Statistics",
+            command=self.show_stats,
+            **BUTTON_STYLE,
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
         )
-        self.bouton_stats.pack(side=tk.LEFT, padx=5)
+        self.stats_button.pack(side=tk.LEFT, padx=5)
         
-        # Bouton Graphiques avec icône
-        self.bouton_graphiques = tk.Button(
-            self.frame_actions,
-            text="📈 Graphiques",
-            command=lambda: self.visualisation.afficher_graphiques(self.window),
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+        # Graphics button with icon
+        self.graphs_button = tk.Button(
+            self.actions_frame,
+            text="📈 Graphs",
+            command=lambda: self.visualization.show_graphs(self.root),
+            **BUTTON_STYLE,
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
         )
-        self.bouton_graphiques.pack(side=tk.LEFT, padx=5)
+        self.graphs_button.pack(side=tk.LEFT, padx=5)
         
-        # Bouton Réinitialiser Stats avec icône
-        self.bouton_reset_stats = tk.Button(
-            self.frame_actions,
-            text="🔄 Réinitialiser",
-            command=self.confirmer_reinitialisation_stats,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['warning'],
+        # Reset Stats button with icon
+        self.reset_stats_button = tk.Button(
+            self.actions_frame,
+            text="🔄 Reset",
+            command=self.confirm_stats_reset,
+            **BUTTON_STYLE,
+            fg=COLORS['background'],
+            bg=COLORS['warning'],
             activebackground='#C0392B',
-            activeforeground=COULEURS['fond']
+            activeforeground=COLORS['background']
         )
-        self.bouton_reset_stats.pack(side=tk.LEFT, padx=5)
+        self.reset_stats_button.pack(side=tk.LEFT, padx=5)
         
-        # Label pour le joueur actuel avec style amélioré
-        self.label_joueur = tk.Label(
-            self.frame_principal,
-            text=f"Tour du Joueur {self.jeu.joueur_actuel}",
-            **STYLE_SOUS_TITRE
+        # Label for current player with improved style
+        self.player_label = tk.Label(
+            self.main_frame,
+            text=f"Player {self.game.current_player}'s turn",
+            **SUBTITLE_STYLE
         )
-        self.label_joueur.pack(pady=(0, 10))
+        self.player_label.pack(pady=(0, 10))
         
-        # Création du canvas avec style amélioré
+        # Creation of canvas with improved style
         self.canvas = tk.Canvas(
-            self.frame_principal,
-            width=COLONNES * TAILLE_CASE,
-            height=LIGNES * TAILLE_CASE,
-            **STYLE_CANVAS
+            self.main_frame,
+            width=COLUMNS * CELL_SIZE,
+            height=ROWS * CELL_SIZE,
+            **CANVAS_STYLE
         )
-        self.canvas.pack()
+        self.canvas.pack(pady=(0, 30))  # Added bottom padding
         
-        # Frame pour les boutons de contrôle
-        self.frame_controles = tk.Frame(
-            self.frame_principal,
-            bg=COULEURS['fond'],
+        # Create separate frames for each row of buttons
+        # First row of controls
+        self.controls_frame1 = tk.Frame(
+            self.main_frame,
+            bg=COLORS['background'],
             padx=20,
-            pady=20
+            pady=10  # Reduced padding
         )
-        self.frame_controles.pack(pady=20)
+        self.controls_frame1.pack(fill=tk.X)
         
-        # Bouton Nouvelle Partie avec icône
-        self.bouton_nouvelle_partie = tk.Button(
-            self.frame_controles,
-            text="🆕 Nouvelle Partie",
-            command=self.reinitialiser_jeu,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+        # Second row of controls
+        self.controls_frame2 = tk.Frame(
+            self.main_frame,
+            bg=COLORS['background'],
+            padx=20,
+            pady=10  # Reduced padding
         )
-        self.bouton_nouvelle_partie.pack(side=tk.LEFT, padx=10)
+        self.controls_frame2.pack(fill=tk.X)
         
-        # Bouton Mode IA avec icône
-        self.bouton_mode_ia = tk.Button(
-            self.frame_controles,
-            text="🤖 Mode IA",
-            command=self.changer_mode_ia,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+        # New Game button with icon - First row
+        self.new_game_button = tk.Button(
+            self.controls_frame1,
+            text="🆕 New Game",
+            command=self.reset_game,
+            height=1,  # Fixed height
+            width=12,  # Fixed width
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
         )
-        self.bouton_mode_ia.pack(side=tk.LEFT, padx=10)
+        self.new_game_button.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
-        # Bouton pour voir les patterns appris par l'IA
-        self.bouton_patterns = tk.Button(
-            self.frame_controles,
-            text="🧠 Patterns IA",
-            command=self.afficher_patterns_ia,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+        # AI Mode button with icon - First row
+        self.ai_mode_button = tk.Button(
+            self.controls_frame1,
+            text="🤖 AI Mode",
+            command=self.toggle_ai_mode,
+            height=1,  # Fixed height
+            width=12,  # Fixed width
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
         )
-        self.bouton_patterns.pack(side=tk.LEFT, padx=10)
+        self.ai_mode_button.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
-        # Bouton pour le mode IA vs IA
-        self.bouton_ia_vs_ia = tk.Button(
-            self.frame_controles,
+        # Button to view AI learned patterns - First row
+        self.patterns_button = tk.Button(
+            self.controls_frame1,
+            text="🧠 AI Patterns",
+            command=self.show_ai_patterns,
+            height=1,  # Fixed height
+            width=12,  # Fixed width
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
+        )
+        self.patterns_button.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+        
+        # Button for AI vs AI mode - Second row
+        self.ai_vs_ai_button = tk.Button(
+            self.controls_frame2,
             text="🤖 vs 🤖",
-            command=self.changer_mode_ia_vs_ia,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['bouton'],
-            activebackground=COULEURS['bouton_hover'],
-            activeforeground=COULEURS['fond']
+            command=self.toggle_ai_vs_ai_mode,
+            height=1,  # Fixed height
+            width=12,  # Fixed width
+            fg=COLORS['background'],
+            bg=COLORS['button'],
+            activebackground=COLORS['button_hover'],
+            activeforeground=COLORS['background']
         )
-        self.bouton_ia_vs_ia.pack(side=tk.LEFT, padx=10)
+        self.ai_vs_ai_button.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
-        # Bouton Quitter avec icône
-        self.bouton_quitter = tk.Button(
-            self.frame_controles,
-            text="🚪 Quitter",
-            command=self.window.quit,
-            **STYLE_BOUTON,
-            fg=COULEURS['fond'],
-            bg=COULEURS['warning'],
+        # Quit button with icon - Second row
+        self.quit_button = tk.Button(
+            self.controls_frame2,
+            text="🚪 Quit",
+            command=self.root.quit,
+            height=1,  # Fixed height
+            width=12,  # Fixed width
+            fg=COLORS['background'],
+            bg=COLORS['warning'],
             activebackground='#C0392B',
-            activeforeground=COULEURS['fond']
+            activeforeground=COLORS['background']
         )
-        self.bouton_quitter.pack(side=tk.LEFT, padx=10)
+        self.quit_button.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
         
-        # Dessiner le plateau initial
-        self.dessiner_plateau()
+        # Draw initial board
+        self.draw_board()
         
         # Bindings
-        self.canvas.bind('<Button-1>', self.gerer_clic)
-        self.canvas.bind('<Motion>', self.gerer_survol)
+        self.canvas.bind('<Button-1>', self.handle_click)
+        self.canvas.bind('<Motion>', self.handle_hover)
         
-        # Centrer la fenêtre
-        self.window.update_idletasks()
-        width = self.window.winfo_width()
-        height = self.window.winfo_height()
-        x = (self.window.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.window.winfo_screenheight() // 2) - (height // 2)
-        self.window.geometry(f'{width}x{height}+{x}+{y}')
+        # Center the window and set its size
+        self.root.update_idletasks()
+        width = max(self.root.winfo_reqwidth(), COLUMNS * CELL_SIZE + 100)
+        height = max(self.root.winfo_reqheight(), ROWS * CELL_SIZE + 400)
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
 
-    def dessiner_plateau(self):
+    def draw_board(self):
         self.canvas.delete("all")
         
-        # Dessiner le fond du plateau
+        # Draw board background
         self.canvas.create_rectangle(
             0, 0,
-            COLONNES * TAILLE_CASE, LIGNES * TAILLE_CASE,
-            fill=COULEURS['plateau'],
-            outline=COULEURS['bordure'],
+            COLUMNS * CELL_SIZE, ROWS * CELL_SIZE,
+            fill=COLORS['board'],
+            outline=COLORS['border'],
             width=2
         )
         
-        # Initialiser le tableau pour stocker les références des cases
-        self.cases = []
+        # Initialize array to store cell references
+        self.cells = []
         
-        for ligne in range(LIGNES):
-            ligne_cases = []
-            for col in range(COLONNES):
-                x1 = col * TAILLE_CASE
-                y1 = ligne * TAILLE_CASE
-                x2 = x1 + TAILLE_CASE
-                y2 = y1 + TAILLE_CASE
+        for row in range(ROWS):
+            row_cells = []
+            for col in range(COLUMNS):
+                x1 = col * CELL_SIZE
+                y1 = row * CELL_SIZE
+                x2 = x1 + CELL_SIZE
+                y2 = y1 + CELL_SIZE
                 
-                # Dessiner les cases avec ombre
-                case = self.canvas.create_oval(
+                # Draw cells with shadow
+                cell = self.canvas.create_oval(
                     x1 + 5, y1 + 5,
                     x2 - 5, y2 - 5,
-                    fill=COULEURS[self.jeu.plateau[ligne][col]],
-                    outline=COULEURS['bordure'],
+                    fill=COLORS[self.game.board[row][col]],
+                    outline=COLORS['border'],
                     width=1
                 )
-                ligne_cases.append(case)
-            self.cases.append(ligne_cases)
+                row_cells.append(cell)
+            self.cells.append(row_cells)
 
-    def gerer_survol(self, event):
-        colonne = event.x // TAILLE_CASE
-        if 0 <= colonne < COLONNES:
-            # Effacer le plateau
-            self.dessiner_plateau()
+    def handle_hover(self, event):
+        column = event.x // CELL_SIZE
+        if 0 <= column < COLUMNS:
+            # Clear the board
+            self.draw_board()
             
-            # Dessiner l'indicateur de survol
-            x1 = colonne * TAILLE_CASE
+            # Draw hover indicator
+            x1 = column * CELL_SIZE
             y1 = 0
-            x2 = x1 + TAILLE_CASE
-            y2 = TAILLE_CASE
+            x2 = x1 + CELL_SIZE
+            y2 = CELL_SIZE
             
             self.canvas.create_oval(
                 x1 + 5, y1 + 5,
                 x2 - 5, y2 - 5,
-                fill=COULEURS['hover'],
-                outline=COULEURS[self.jeu.joueur_actuel]
+                fill=COLORS['hover'],
+                outline=COLORS[self.game.current_player]
             )
 
-    def gerer_clic(self, event):
-        """Gère le clic sur le canvas"""
-        # Si c'est le tour de l'IA, on ne permet pas au joueur de jouer
-        if self.jeu.joueur_actuel == JOUEUR_O and self.jeu.mode_ia:
+    def handle_click(self, event):
+        """Handle click on canvas"""
+        # If it's AI's turn, don't allow player to play
+        if self.game.current_player == PLAYER_O and self.game.ai_mode:
             return
             
-        colonne = event.x // TAILLE_CASE
+        column = event.x // CELL_SIZE
         
-        # Always ensure temps_debut is set before potentially ending the game
+        # Always ensure start_time is set before potentially ending the game
         import time
-        if not hasattr(self.jeu, 'temps_debut') or self.jeu.temps_debut is None:
-            self.jeu.temps_debut = time.time()
+        if not hasattr(self.game, 'start_time') or self.game.start_time is None:
+            self.game.start_time = time.time()
             
-        resultat = self.jeu.placer_jeton(colonne)
+        result = self.game.place_token(column)
         
-        if resultat == 'victoire':
-            self.jeu.incrementer_score()
-            self.mettre_a_jour_score()  # Mettre à jour le score
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
-            # On met à jour l'affichage immédiatement
-            self.window.update()
-            # Mettre en évidence les jetons gagnants avant d'afficher le message
-            self.mettre_en_evidence_victoire()
+        if result == 'victory':
+            self.game.increment_score()
+            self.update_score()  # Update score
+            self.draw_board()
+            self.update_interface()
+            # Update display immediately
+            self.root.update()
+            # Highlight winning tokens before displaying message
+            self.highlight_victory()
             return
             
-        elif resultat == 'nul':
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
-            # On met à jour l'affichage immédiatement
-            self.window.update()
+        elif result == 'draw':
+            self.draw_board()
+            self.update_interface()
+            # Update display immediately
+            self.root.update()
             
-            # On attend un court instant avant d'afficher le message
-            self.window.after(500, lambda: self.fin_partie_avec_message('N'))
+            # Wait a short moment before displaying message
+            self.root.after(500, lambda: self.end_game_with_message('N'))
             return
             
-        elif resultat:
-            self.jeu.changer_joueur()
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
+        elif result:
+            self.game.change_player()
+            self.draw_board()
+            self.update_interface()
             
-            # Tour de l'IA - on ajoute un délai de 1 seconde
-            if self.jeu.joueur_actuel == JOUEUR_O and self.jeu.mode_ia:
-                # Désactiver les événements pendant que l'IA réfléchit
+            # AI's turn - add a 1 second delay
+            if self.game.current_player == PLAYER_O and self.game.ai_mode:
+                # Disable events while AI is thinking
                 self.canvas.unbind('<Button-1>')
-                # Mettre à jour le label pour montrer que l'IA réfléchit
-                self.label_joueur.config(text="L'IA réfléchit... 🤔")
-                # Appeler jouer_coup_ia après 1 seconde
-                self.window.after(1000, self.jouer_coup_ia)
+                # Update label to show AI is thinking
+                self.player_label.config(text="AI is thinking... 🤔")
+                # Call play_ai_move after 1 second
+                self.root.after(1000, self.play_ai_move)
 
-    def jouer_coup_ia(self):
-        """Fait jouer l'IA"""
+    def play_ai_move(self):
+        """Make the AI play"""
         try:
-            # Always ensure temps_debut is set before the AI plays
+            # Always ensure start_time is set before AI plays
             import time
-            if not hasattr(self.jeu, 'temps_debut') or self.jeu.temps_debut is None:
-                self.jeu.temps_debut = time.time()
+            if not hasattr(self.game, 'start_time') or self.game.start_time is None:
+                self.game.start_time = time.time()
                 
-            colonne = self.jeu.choisir_meilleur_coup()
-            if colonne is not None:
-                resultat = self.jeu.placer_jeton(colonne)
+            column = self.game.choose_best_move()
+            if column is not None:
+                result = self.game.place_token(column)
                 
-                if resultat == 'victoire':
-                    self.jeu.incrementer_score()
-                    self.mettre_a_jour_score()  # Mettre à jour le score
-                    self.dessiner_plateau()
-                    self.mettre_a_jour_interface()
-                    # On met à jour l'affichage immédiatement
-                    self.window.update()
-                    # Mettre en évidence les jetons gagnants avant d'afficher le message
-                    self.mettre_en_evidence_victoire()
+                if result == 'victory':
+                    self.game.increment_score()
+                    self.update_score()  # Update score
+                    self.draw_board()
+                    self.update_interface()
+                    # Update display immediately
+                    self.root.update()
+                    # Highlight winning tokens before displaying message
+                    self.highlight_victory()
                     return
                     
-                elif resultat == 'nul':
-                    self.dessiner_plateau()
-                    self.mettre_a_jour_interface()
-                    # On met à jour l'affichage immédiatement
-                    self.window.update()
+                elif result == 'draw':
+                    self.draw_board()
+                    self.update_interface()
+                    # Update display immediately
+                    self.root.update()
                     
-                    # On attend un court instant avant d'afficher le message
-                    self.window.after(500, lambda: self.fin_partie_avec_message('N'))
+                    # Wait a short moment before displaying message
+                    self.root.after(500, lambda: self.end_game_with_message('N'))
                     return
                     
-                elif resultat:
-                    self.jeu.changer_joueur()
-                    self.dessiner_plateau()
-                    self.mettre_a_jour_interface()
+                elif result:
+                    self.game.change_player()
+                    self.draw_board()
+                    self.update_interface()
         finally:
-            # Réactiver les événements après le coup de l'IA
-            self.canvas.bind('<Button-1>', self.gerer_clic)
-            # Remettre à jour le label du joueur
-            self.label_joueur.config(text=f"Tour du Joueur {self.jeu.joueur_actuel}")
+            # Re-enable events after AI move
+            self.canvas.bind('<Button-1>', self.handle_click)
+            # Update player label
+            self.player_label.config(text=f"Player {self.game.current_player}'s turn")
 
-    def jouer_coup_ia_vs_ia(self):
-        """Fait jouer IA contre IA en mode automatique"""
-        if not self.jeu.mode_ia_vs_ia:
-            # Si le mode a été désactivé entre-temps, on arrête
+    def play_ai_vs_ai_move(self):
+        """Make AI play against AI in automatic mode"""
+        if not self.game.ai_vs_ai_mode:
+            # If mode was disabled in the meantime, stop
             return
             
-        # Mettre à jour le label pour montrer quelle IA réfléchit
-        joueur_actuel_nom = "IA 1 (X)" if self.jeu.joueur_actuel == JOUEUR_X else "IA 2 (O)"
-        self.label_joueur.config(text=f"{joueur_actuel_nom} réfléchit... 🤔")
-        self.window.update()
+        # Update label to show which AI is thinking
+        current_player_name = "AI 1 (X)" if self.game.current_player == PLAYER_X else "AI 2 (O)"
+        self.player_label.config(text=f"{current_player_name} is thinking... 🤔")
+        self.root.update()
         
-        # Choisir et jouer le coup
-        colonne = self.jeu.choisir_meilleur_coup()
-        if colonne is not None:
-            # Ajouter un délai pour visualiser les coups
-            self.window.after(500, lambda col=colonne: self.executer_coup_ia_vs_ia(col))
+        # Choose and play move
+        column = self.game.choose_best_move()
+        if column is not None:
+            # Add delay to visualize moves
+            self.root.after(500, lambda col=column: self.execute_ai_vs_ai_move(col))
         else:
-            # Si aucun coup valide, considérer comme un match nul
-            self.fin_partie_avec_message('N')
+            # If no valid move, consider it a draw
+            self.end_game_with_message('N')
             
-    def executer_coup_ia_vs_ia(self, colonne):
-        """Execute un coup dans le mode IA vs IA après un délai"""
-        if not self.jeu.mode_ia_vs_ia:
+    def execute_ai_vs_ai_move(self, column):
+        """Execute a move in AI vs AI mode after a delay"""
+        if not self.game.ai_vs_ai_mode:
             return
             
-        resultat = self.jeu.placer_jeton(colonne)
+        result = self.game.place_token(column)
         
-        if resultat == 'victoire':
-            self.jeu.incrementer_score()
-            self.mettre_a_jour_score()
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
-            self.window.update()
+        if result == 'victory':
+            self.game.increment_score()
+            self.update_score()
+            self.draw_board()
+            self.update_interface()
+            self.root.update()
             
-            # Animation des jetons gagnants et fin de partie
-            self.mettre_en_evidence_victoire_ia_vs_ia()
+            # Animate winning tokens and end game
+            self.highlight_victory_ai_vs_ai()
             return
             
-        elif resultat == 'nul':
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
-            self.window.update()
-            self.fin_partie_avec_message('N')
+        elif result == 'draw':
+            self.draw_board()
+            self.update_interface()
+            self.root.update()
+            self.end_game_with_message('N')
             return
             
-        elif resultat:
-            self.jeu.changer_joueur()
-            self.dessiner_plateau()
-            self.mettre_a_jour_interface()
+        elif result:
+            self.game.change_player()
+            self.draw_board()
+            self.update_interface()
             
-            # Programmer le prochain coup avec un délai
-            self.window.after(800, self.jouer_coup_ia_vs_ia)
+            # Schedule next move with delay
+            self.root.after(800, self.play_ai_vs_ai_move)
             
-    def mettre_en_evidence_victoire_ia_vs_ia(self):
-        """Version spéciale de la mise en évidence pour le mode IA vs IA"""
-        jetons_gagnants = self.jeu.trouver_jetons_gagnants()
-        couleur_originale = COULEURS[self.jeu.joueur_actuel]
-        outline_original = COULEURS['bordure']
+    def highlight_victory_ai_vs_ai(self):
+        """Special version of highlighting for AI vs AI mode"""
+        winning_tokens = self.game.find_winning_tokens()
+        original_color = COLORS[self.game.current_player]
+        original_outline = COLORS['border']
         
-        def animation_clignotement(compteur=0):
-            if compteur < 6:  # 3 clignotements (6 changements)
-                # Alterner entre les couleurs
-                fill_color = '#FFD700' if compteur % 2 == 0 else couleur_originale
-                outline_color = '#FF4500' if compteur % 2 == 0 else outline_original
-                width = 3 if compteur % 2 == 0 else 1
+        def blink_animation(counter=0):
+            if counter < 6:  # 3 blinks (6 changes)
+                # Alternate between colors
+                fill_color = '#FFD700' if counter % 2 == 0 else original_color
+                outline_color = '#FF4500' if counter % 2 == 0 else original_outline
+                width = 3 if counter % 2 == 0 else 1
                 
-                for ligne, col in jetons_gagnants:
+                for row, col in winning_tokens:
                     self.canvas.itemconfig(
-                        self.cases[ligne][col],
+                        self.cells[row][col],
                         fill=fill_color,
                         outline=outline_color,
                         width=width
                     )
                 self.canvas.update()
-                self.window.after(200, lambda: animation_clignotement(compteur + 1))
+                self.root.after(200, lambda: blink_animation(counter + 1))
             else:
-                # Animation terminée
-                joueur_gagnant = "IA 1 (X)" if self.jeu.joueur_actuel == JOUEUR_X else "IA 2 (O)"
-                message = f"{joueur_gagnant} a gagné !"
+                # Animation finished
+                winning_player = "AI 1 (X)" if self.game.current_player == PLAYER_X else "AI 2 (O)"
+                message = f"{winning_player} has won!"
                 try:
-                    stats = self.jeu.fin_partie(self.jeu.joueur_actuel)
-                    messagebox.showinfo("Fin de partie", message)
+                    stats = self.game.end_game(self.game.current_player)
+                    messagebox.showinfo("Game Over", message)
                 except Exception as e:
-                    print(f"Erreur dans fin_partie: {e}")
+                    print(f"Error in end_game: {e}")
                     print(traceback.format_exc())
                 finally:
-                    self.reinitialiser_jeu()
-                    # Si le mode IA vs IA est toujours actif, lancer une nouvelle partie
-                    if self.jeu.mode_ia_vs_ia:
-                        self.window.after(1000, self.jouer_coup_ia_vs_ia)
+                    self.reset_game()
+                    # If AI vs AI mode is still active, start a new game
+                    if self.game.ai_vs_ai_mode:
+                        self.root.after(1000, self.play_ai_vs_ai_move)
         
-        # Démarrer l'animation
-        animation_clignotement()
+        # Start animation
+        blink_animation()
 
-    def mettre_en_evidence_victoire(self):
-        """Met en évidence les jetons gagnants"""
-        jetons_gagnants = self.jeu.trouver_jetons_gagnants()
-        couleur_originale = COULEURS[self.jeu.joueur_actuel]
-        outline_original = COULEURS['bordure']
+    def highlight_victory(self):
+        """Highlight winning tokens"""
+        winning_tokens = self.game.find_winning_tokens()
+        original_color = COLORS[self.game.current_player]
+        original_outline = COLORS['border']
         
-        def animation_clignotement(compteur=0):
-            if compteur < 6:  # 3 clignotements (6 changements)
-                # Alterner entre les couleurs
-                fill_color = '#FFD700' if compteur % 2 == 0 else couleur_originale  # Or vif
-                outline_color = '#FF4500' if compteur % 2 == 0 else outline_original  # Orange-rouge
-                width = 3 if compteur % 2 == 0 else 1  # Épaisseur du contour
+        def blink_animation(counter=0):
+            if counter < 6:  # 3 blinks (6 changes)
+                # Alternate between colors
+                fill_color = '#FFD700' if counter % 2 == 0 else original_color  # Gold
+                outline_color = '#FF4500' if counter % 2 == 0 else original_outline  # Orange-red
+                width = 3 if counter % 2 == 0 else 1  # Outline thickness
                 
-                for ligne, col in jetons_gagnants:
+                for row, col in winning_tokens:
                     self.canvas.itemconfig(
-                        self.cases[ligne][col],
+                        self.cells[row][col],
                         fill=fill_color,
                         outline=outline_color,
                         width=width
                     )
                 self.canvas.update()
-                # Programmer le prochain changement dans 300ms
-                self.window.after(200, lambda: animation_clignotement(compteur + 1))
+                # Schedule next change in 200ms
+                self.root.after(200, lambda: blink_animation(counter + 1))
             else:
-                # Animation terminée, afficher le message de victoire
-                self.window.after(100, lambda: self.fin_partie_avec_message(self.jeu.joueur_actuel))
+                # Animation finished, display victory message
+                self.root.after(100, lambda: self.end_game_with_message(self.game.current_player))
         
-        # Démarrer l'animation
-        animation_clignotement()
+        # Start animation
+        blink_animation()
 
-    def fin_partie_avec_message(self, gagnant):
-        """Gère la fin de partie avec message après un délai"""
+    def end_game_with_message(self, winner):
+        """Handle end of game with message after a delay"""
         try:
-            stats = self.jeu.fin_partie(gagnant)
-            if gagnant == 'N':
-                messagebox.showinfo("Fin de partie", "Match nul !")
+            stats = self.game.end_game(winner)
+            if winner == 'N':
+                messagebox.showinfo("Game Over", "Draw!")
             else:
-                message = "L'IA a gagné !" if (self.jeu.mode_ia and gagnant == JOUEUR_O) else f"Le joueur {gagnant} a gagné !"
-                messagebox.showinfo("Fin de partie", message)
+                message = "AI has won!" if (self.game.ai_mode and winner == PLAYER_O) else f"Player {winner} has won!"
+                messagebox.showinfo("Game Over", message)
         except Exception as e:
-            print(f"Error in fin_partie: {e}")
+            print(f"Error in end_game: {e}")
             print(traceback.format_exc())
         finally:
-            self.reinitialiser_jeu()
+            self.reset_game()
 
-    def changer_mode_ia(self):
-        self.jeu.mode_ia = not self.jeu.mode_ia
-        self.bouton_mode_ia.config(
-            text="Mode IA: Activé" if self.jeu.mode_ia else "Mode IA: Désactivé",
-            bg='#2980B9' if self.jeu.mode_ia else COULEURS['bouton']
+    def toggle_ai_mode(self):
+        """Toggle AI mode and show level selection dialog if enabled"""
+        if not self.game.ai_mode:
+            # AI mode is being enabled
+            self.game.ai_mode = True
+            self.show_ai_level_selector()
+        else:
+            # AI mode is being disabled
+            self.game.ai_mode = False
+            self.ai_mode_button.config(
+                text="AI Mode: Off",
+                bg=COLORS['button']
+            )
+    
+    def show_ai_level_selector(self):
+        """Show a dialog to select AI level"""
+        # Create a new window
+        level_window = tk.Toplevel(self.root)
+        level_window.title("Select AI Level")
+        level_window.configure(bg=COLORS['background'])
+        level_window.geometry("300x200")
+        level_window.transient(self.root)  # Set as transient to main window
+        level_window.grab_set()  # Modal window
+        level_window.resizable(False, False)
+        
+        # Center the window
+        level_window.update_idletasks()
+        x = (level_window.winfo_screenwidth() // 2) - (level_window.winfo_width() // 2)
+        y = (level_window.winfo_screenheight() // 2) - (level_window.winfo_height() // 2)
+        level_window.geometry(f"+{x}+{y}")
+        
+        # Title
+        tk.Label(
+            level_window,
+            text="Select AI Level",
+            font=('Arial', 14, 'bold'),
+            bg=COLORS['background'],
+            fg=COLORS['text']
+        ).pack(pady=(20, 30))
+        
+        # Buttons frame
+        buttons_frame = tk.Frame(level_window, bg=COLORS['background'])
+        buttons_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        # Moderate AI button
+        def select_moderate():
+            self.game.ai_level = 1
+            self.ai_mode_button.config(
+                text="AI: Moderate",
+                bg='#2980B9'
+            )
+            level_window.destroy()
+        
+        # Fixed moderate button - text is included directly in the button
+        moderate_button = tk.Button(
+            buttons_frame,
+            text="Moderate AI\nUses basic game logic",
+            command=select_moderate,
+            height=2,
+            width=15,
+            fg=COLORS['background'],
+            bg='#3498DB',
+            activebackground='#2980B9',
+            activeforeground=COLORS['background']
         )
+        moderate_button.pack(side=tk.LEFT, padx=10)
+        
+        # Advanced AI button
+        def select_advanced():
+            self.game.ai_level = 2
+            self.ai_mode_button.config(
+                text="AI: Advanced",
+                bg='#8E44AD'
+            )
+            level_window.destroy()
+        
+        # Fixed advanced button - text is included directly in the button
+        advanced_button = tk.Button(
+            buttons_frame,
+            text="Advanced AI\nUses pattern learning",
+            command=select_advanced,
+            height=2,
+            width=15,
+            fg=COLORS['background'],
+            bg='#9B59B6',
+            activebackground='#8E44AD',
+            activeforeground=COLORS['background']
+        )
+        advanced_button.pack(side=tk.LEFT, padx=10)
+        
+        # Cancel button
+        def cancel_selection():
+            self.game.ai_mode = False
+            level_window.destroy()
+        
+        cancel_button = tk.Button(
+            level_window,
+            text="Cancel",
+            command=cancel_selection,
+            fg=COLORS['text'],
+            bg=COLORS['background'],
+            activebackground=COLORS['background'],
+            activeforeground=COLORS['text'],
+            bd=0
+        )
+        cancel_button.pack(pady=20)
 
-    def changer_mode_ia_vs_ia(self):
-        """Active ou désactive le mode IA vs IA"""
-        # Désactiver le mode joueur vs IA si on active le mode IA vs IA
-        if not self.jeu.mode_ia_vs_ia:
-            self.jeu.mode_ia = False
-            self.bouton_mode_ia.config(
-                text="Mode IA: Désactivé",
-                bg=COULEURS['bouton']
+    def toggle_ai_vs_ai_mode(self):
+        """Enable or disable AI vs AI mode"""
+        # Disable player vs AI mode if activating AI vs AI mode
+        if not self.game.ai_vs_ai_mode:
+            self.game.ai_mode = False
+            self.ai_mode_button.config(
+                text="AI Mode: Off",
+                bg=COLORS['button']
             )
             
-        self.jeu.mode_ia_vs_ia = not self.jeu.mode_ia_vs_ia
+        self.game.ai_vs_ai_mode = not self.game.ai_vs_ai_mode
         
-        # Mettre à jour l'apparence du bouton
-        self.bouton_ia_vs_ia.config(
-            text="IA vs IA: Activé" if self.jeu.mode_ia_vs_ia else "🤖 vs 🤖",
-            bg='#9B59B6' if self.jeu.mode_ia_vs_ia else COULEURS['bouton']
+        # Update button appearance
+        self.ai_vs_ai_button.config(
+            text="AI vs AI: On" if self.game.ai_vs_ai_mode else "🤖 vs 🤖",
+            bg='#9B59B6' if self.game.ai_vs_ai_mode else COLORS['button']
         )
         
-        # Si on active ce mode, lancer automatiquement une partie
-        if self.jeu.mode_ia_vs_ia:
-            self.reinitialiser_jeu()
-            # Laisser l'interface se rafraîchir avant de commencer
-            self.window.update()
-            self.window.after(500, self.jouer_coup_ia_vs_ia)
+        # If activating this mode, automatically start a game
+        if self.game.ai_vs_ai_mode:
+            self.reset_game()
+            # Let the interface refresh before starting
+            self.root.update()
+            self.root.after(500, self.play_ai_vs_ai_move)
 
-    def mettre_a_jour_score(self):
-        self.label_score_x.config(text=f"Joueur {JOUEUR_X}: {self.jeu.scores[JOUEUR_X]}")
-        self.label_score_o.config(text=f"Joueur {JOUEUR_O}: {self.jeu.scores[JOUEUR_O]}")
+    def update_score(self):
+        self.score_x_label.config(text=f"Player {PLAYER_X}: {self.game.scores[PLAYER_X]}")
+        self.score_o_label.config(text=f"Player {PLAYER_O}: {self.game.scores[PLAYER_O]}")
 
-    def reinitialiser_jeu(self):
-        # Always make sure temps_debut is set to the current time before resetting
+    def reset_game(self):
+        # Always make sure start_time is set to the current time before resetting
         import time
-        self.jeu.temps_debut = time.time()
+        self.game.start_time = time.time()
         
         # Now reset the game
-        self.jeu.reinitialiser_jeu()
+        self.game.reset_game()
         
-        # Verify temps_debut is still set after resetting
-        if not hasattr(self.jeu, 'temps_debut') or self.jeu.temps_debut is None:
-            self.jeu.temps_debut = time.time()
+        # Verify start_time is still set after resetting
+        if not hasattr(self.game, 'start_time') or self.game.start_time is None:
+            self.game.start_time = time.time()
             
-        self.label_joueur.config(text=f"Tour du Joueur {self.jeu.joueur_actuel}")
-        self.dessiner_plateau()
+        self.player_label.config(text=f"Player {self.game.current_player}'s turn")
+        self.draw_board()
 
-    def confirmer_reinitialisation_stats(self):
-        """Demande confirmation avant de réinitialiser les statistiques"""
+    def confirm_stats_reset(self):
+        """Ask for confirmation before resetting statistics"""
         if messagebox.askyesno(
             "Confirmation",
-            "Êtes-vous sûr de vouloir réinitialiser toutes les statistiques ?\nCette action est irréversible.",
+            "Are you sure you want to reset all statistics?\nThis action is irreversible.",
             icon='warning'
         ):
-            self.jeu.stats_manager.reinitialiser_stats()
-            messagebox.showinfo("Succès", "Les statistiques ont été réinitialisées.")
-            # Rafraîchir l'affichage si la fenêtre des stats est ouverte
-            if hasattr(self, 'fenetre_stats') and self.fenetre_stats.winfo_exists():
-                self.afficher_stats()
+            self.game.stats_manager.reinitialiser_stats()
+            messagebox.showinfo("Success", "Statistics have been reset.")
+            # Refresh display if stats window is open
+            if hasattr(self, 'stats_window') and self.stats_window.winfo_exists():
+                self.show_stats()
 
-    def afficher_stats(self):
-        """Affiche une fenêtre avec les statistiques"""
-        stats = self.jeu.stats_manager.get_statistiques()
-        historique = self.jeu.stats_manager.get_historique(10)
+    def show_stats(self):
+        """Display a window with statistics"""
+        stats = self.game.stats_manager.get_statistiques()
+        history = self.game.stats_manager.get_historique(10)
         
-        # Créer une nouvelle fenêtre
-        self.fenetre_stats = tk.Toplevel(self.window)
-        self.fenetre_stats.title("Statistiques")
-        self.fenetre_stats.configure(bg=COULEURS['fond'])
+        # Create a new window
+        self.stats_window = tk.Toplevel(self.root)
+        self.stats_window.title("Statistics")
+        self.stats_window.configure(bg=COLORS['background'])
         
-        # Frame pour les statistiques générales
-        frame_stats = tk.Frame(self.fenetre_stats, bg=COULEURS['fond'], padx=20, pady=20)
-        frame_stats.pack()
+        # Frame for general statistics
+        stats_frame = tk.Frame(self.stats_window, bg=COLORS['background'], padx=20, pady=20)
+        stats_frame.pack()
         
-        # Afficher les statistiques
+        # Display statistics
         tk.Label(
-            frame_stats,
-            text=f"Parties jouées: {stats['parties_jouées']}",
+            stats_frame,
+            text=f"Games played: {stats['parties_jouées']}",
             font=('Arial', 12),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(anchor='w')
         
         tk.Label(
-            frame_stats,
-            text=f"Victoires Joueur: {stats['victoires_joueur']} ({stats['pourcentage_victoires_joueur']}%)",
+            stats_frame,
+            text=f"Player Wins: {stats['victoires_joueur']} ({stats['pourcentage_victoires_joueur']}%)",
             font=('Arial', 12),
-            bg=COULEURS['fond'],
-            fg=COULEURS[JOUEUR_X]
+            bg=COLORS['background'],
+            fg=COLORS[PLAYER_X]
         ).pack(anchor='w')
         
         tk.Label(
-            frame_stats,
-            text=f"Victoires IA: {stats['victoires_ia']} ({stats['pourcentage_victoires_ia']}%)",
+            stats_frame,
+            text=f"AI Wins: {stats['victoires_ia']} ({stats['pourcentage_victoires_ia']}%)",
             font=('Arial', 12),
-            bg=COULEURS['fond'],
-            fg=COULEURS[JOUEUR_O]
+            bg=COLORS['background'],
+            fg=COLORS[PLAYER_O]
         ).pack(anchor='w')
         
         tk.Label(
-            frame_stats,
-            text=f"Matchs nuls: {stats['matchs_nuls']} ({stats['pourcentage_matchs_nuls']}%)",
+            stats_frame,
+            text=f"Draws: {stats['matchs_nuls']} ({stats['pourcentage_matchs_nuls']}%)",
             font=('Arial', 12),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(anchor='w')
         
-        # Frame pour l'historique
-        frame_historique = tk.Frame(self.fenetre_stats, bg=COULEURS['fond'], padx=20, pady=20)
-        frame_historique.pack()
+        # Frame for history
+        history_frame = tk.Frame(self.stats_window, bg=COLORS['background'], padx=20, pady=20)
+        history_frame.pack()
         
         tk.Label(
-            frame_historique,
-            text="10 dernières parties:",
+            history_frame,
+            text="Last 10 games:",
             font=('Arial', 12, 'bold'),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(anchor='w')
         
-        # Afficher l'historique
-        for partie in reversed(historique):
-            gagnant = "Match nul" if partie['gagnant'] == "N" else f"Joueur {partie['gagnant']}"
+        # Display history
+        for game in reversed(history):
+            winner = "Draw" if game['gagnant'] == "N" else f"Player {game['gagnant']}"
             tk.Label(
-                frame_historique,
-                text=f"{partie['date']} - {gagnant} - Durée: {partie['durée']}s",
+                history_frame,
+                text=f"{game['date']} - {winner} - Duration: {game['duree']}s",
                 font=('Arial', 10),
-                bg=COULEURS['fond'],
-                fg=COULEURS['texte']
+                bg=COLORS['background'],
+                fg=COLORS['text']
             ).pack(anchor='w')
 
-    def afficher_patterns_ia(self):
-        """Affiche les patterns d'apprentissage de l'IA dans une fenêtre"""
-        # Créer une nouvelle fenêtre
-        fenetre_patterns = tk.Toplevel(self.window)
-        fenetre_patterns.title("Patterns appris par l'IA")
-        fenetre_patterns.configure(bg=COULEURS['fond'])
-        fenetre_patterns.geometry("600x400")
+    def show_ai_patterns(self):
+        """Display AI learning patterns in a window"""
+        # Create a new window
+        patterns_window = tk.Toplevel(self.root)
+        patterns_window.title("AI Learned Patterns")
+        patterns_window.configure(bg=COLORS['background'])
+        patterns_window.geometry("600x400")
         
-        # Frame principal
-        frame_principal = tk.Frame(fenetre_patterns, bg=COULEURS['fond'], padx=20, pady=20)
-        frame_principal.pack(fill=tk.BOTH, expand=True)
+        # Main frame
+        main_frame = tk.Frame(patterns_window, bg=COLORS['background'], padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Titre
+        # Title
         tk.Label(
-            frame_principal,
-            text="Patterns d'apprentissage de l'IA",
+            main_frame,
+            text="AI Learning Patterns",
             font=('Arial', 14, 'bold'),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(pady=(0, 20))
         
-        # Vérifier si des patterns sont disponibles
-        if not self.jeu.patterns_appris or not (
-            'X' in self.jeu.patterns_appris and 
-            'O' in self.jeu.patterns_appris and
-            (self.jeu.patterns_appris['X']['frequence'] or 
-             self.jeu.patterns_appris['O']['frequence'])
+        # Check if patterns are available
+        if not self.game.learned_patterns or not (
+            'X' in self.game.learned_patterns and 
+            'O' in self.game.learned_patterns and
+            (self.game.learned_patterns['X']['frequence'] or 
+             self.game.learned_patterns['O']['frequence'])
         ):
             tk.Label(
-                frame_principal,
-                text="Aucun pattern d'apprentissage disponible.\nJouez quelques parties pour que l'IA apprenne.",
+                main_frame,
+                text="No learning patterns available.\nPlay some games for the AI to learn.",
                 font=('Arial', 12),
-                bg=COULEURS['fond'],
-                fg=COULEURS['texte']
+                bg=COLORS['background'],
+                fg=COLORS['text']
             ).pack(pady=20)
             return
             
-        # Frame pour les patterns du joueur
-        frame_joueur = tk.LabelFrame(
-            frame_principal,
-            text="Patterns du Joueur X",
+        # Frame for player patterns
+        player_frame = tk.LabelFrame(
+            main_frame,
+            text="Player X Patterns",
             font=('Arial', 12, 'bold'),
-            bg=COULEURS['fond'],
-            fg=COULEURS[JOUEUR_X]
+            bg=COLORS['background'],
+            fg=COLORS[PLAYER_X]
         )
-        frame_joueur.pack(fill=tk.X, pady=10)
+        player_frame.pack(fill=tk.X, pady=10)
         
-        # Nombre total de coups enregistrés pour le joueur
-        nb_coups_joueur = len(self.jeu.patterns_appris['X']['coups']) if 'X' in self.jeu.patterns_appris else 0
+        # Total number of recorded moves for player
+        player_moves_count = len(self.game.learned_patterns['X']['coups']) if 'X' in self.game.learned_patterns else 0
         tk.Label(
-            frame_joueur,
-            text=f"Nombre de coups enregistrés: {nb_coups_joueur}",
+            player_frame,
+            text=f"Number of recorded moves: {player_moves_count}",
             font=('Arial', 10),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(anchor='w', padx=10, pady=5)
         
-        # Positions fréquentes du joueur (top 5)
-        if 'X' in self.jeu.patterns_appris and self.jeu.patterns_appris['X']['frequence']:
-            positions_joueur = sorted(
-                self.jeu.patterns_appris['X']['frequence'].items(),
+        # Frequent positions for player (top 5)
+        if 'X' in self.game.learned_patterns and self.game.learned_patterns['X']['frequence']:
+            player_positions = sorted(
+                self.game.learned_patterns['X']['frequence'].items(),
                 key=lambda x: x[1],
                 reverse=True
             )[:5]
             
             tk.Label(
-                frame_joueur,
-                text="Positions fréquentes:",
+                player_frame,
+                text="Frequent positions:",
                 font=('Arial', 10, 'bold'),
-                bg=COULEURS['fond'],
-                fg=COULEURS['texte']
+                bg=COLORS['background'],
+                fg=COLORS['text']
             ).pack(anchor='w', padx=10, pady=5)
             
-            for pos, freq in positions_joueur:
+            for pos, freq in player_positions:
                 tk.Label(
-                    frame_joueur,
-                    text=f"Position {pos}: utilisée {freq} fois",
+                    player_frame,
+                    text=f"Position {pos}: used {freq} times",
                     font=('Arial', 10),
-                    bg=COULEURS['fond'],
-                    fg=COULEURS['texte']
+                    bg=COLORS['background'],
+                    fg=COLORS['text']
                 ).pack(anchor='w', padx=30, pady=2)
         
-        # Frame pour les patterns de l'IA
-        frame_ia = tk.LabelFrame(
-            frame_principal,
-            text="Patterns de l'IA (O)",
+        # Frame for AI patterns
+        ai_frame = tk.LabelFrame(
+            main_frame,
+            text="AI (O) Patterns",
             font=('Arial', 12, 'bold'),
-            bg=COULEURS['fond'],
-            fg=COULEURS[JOUEUR_O]
+            bg=COLORS['background'],
+            fg=COLORS[PLAYER_O]
         )
-        frame_ia.pack(fill=tk.X, pady=10)
+        ai_frame.pack(fill=tk.X, pady=10)
         
-        # Nombre total de coups enregistrés pour l'IA
-        nb_coups_ia = len(self.jeu.patterns_appris['O']['coups']) if 'O' in self.jeu.patterns_appris else 0
+        # Total number of recorded moves for AI
+        ai_moves_count = len(self.game.learned_patterns['O']['coups']) if 'O' in self.game.learned_patterns else 0
         tk.Label(
-            frame_ia,
-            text=f"Nombre de coups enregistrés: {nb_coups_ia}",
+            ai_frame,
+            text=f"Number of recorded moves: {ai_moves_count}",
             font=('Arial', 10),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         ).pack(anchor='w', padx=10, pady=5)
         
-        # Positions fréquentes de l'IA (top 5)
-        if 'O' in self.jeu.patterns_appris and self.jeu.patterns_appris['O']['frequence']:
-            positions_ia = sorted(
-                self.jeu.patterns_appris['O']['frequence'].items(),
+        # Frequent positions for AI (top 5)
+        if 'O' in self.game.learned_patterns and self.game.learned_patterns['O']['frequence']:
+            ai_positions = sorted(
+                self.game.learned_patterns['O']['frequence'].items(),
                 key=lambda x: x[1],
                 reverse=True
             )[:5]
             
             tk.Label(
-                frame_ia,
-                text="Positions fréquentes:",
+                ai_frame,
+                text="Frequent positions:",
                 font=('Arial', 10, 'bold'),
-                bg=COULEURS['fond'],
-                fg=COULEURS['texte']
+                bg=COLORS['background'],
+                fg=COLORS['text']
             ).pack(anchor='w', padx=10, pady=5)
             
-            for pos, freq in positions_ia:
+            for pos, freq in ai_positions:
                 tk.Label(
-                    frame_ia,
-                    text=f"Position {pos}: utilisée {freq} fois",
+                    ai_frame,
+                    text=f"Position {pos}: used {freq} times",
                     font=('Arial', 10),
-                    bg=COULEURS['fond'],
-                    fg=COULEURS['texte']
+                    bg=COLORS['background'],
+                    fg=COLORS['text']
                 ).pack(anchor='w', padx=30, pady=2)
                 
-        # Explication du fonctionnement de l'apprentissage
-        frame_explication = tk.LabelFrame(
-            frame_principal,
-            text="Comment fonctionne l'apprentissage",
+        # Explanation of how learning works
+        explanation_frame = tk.LabelFrame(
+            main_frame,
+            text="How Learning Works",
             font=('Arial', 12, 'bold'),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte']
+            bg=COLORS['background'],
+            fg=COLORS['text']
         )
-        frame_explication.pack(fill=tk.X, pady=10)
+        explanation_frame.pack(fill=tk.X, pady=10)
         
-        texte_explication = """
-        L'IA apprend des parties précédentes en :
-        - Mémorisant tous les coups joués dans les parties gagnantes
-        - Identifiant les positions qui mènent fréquemment à la victoire
-        - Adaptant sa stratégie pour favoriser ces positions
-        - Évitant les positions qui ont souvent mené à la victoire de l'adversaire
+        explanation_text = """
+        The AI learns from previous games by:
+        - Memorizing all moves played in winning games
+        - Identifying positions that frequently lead to victory
+        - Adapting its strategy to favor these positions
+        - Avoiding positions that have often led to opponent's victory
         
-        Plus vous jouez, plus l'IA devient intelligente !
+        The more you play, the smarter the AI becomes!
         """
         
         tk.Label(
-            frame_explication,
-            text=texte_explication,
+            explanation_frame,
+            text=explanation_text,
             font=('Arial', 9),
-            bg=COULEURS['fond'],
-            fg=COULEURS['texte'],
+            bg=COLORS['background'],
+            fg=COLORS['text'],
             justify=tk.LEFT
         ).pack(anchor='w', padx=10, pady=5)
 
-    def mettre_a_jour_interface(self):
-        """Met à jour l'affichage du plateau de jeu"""
-        for ligne in range(LIGNES):
-            for colonne in range(COLONNES):
-                couleur = COULEURS[VIDE]
-                if self.jeu.plateau[ligne][colonne] == JOUEUR_X:
-                    couleur = COULEURS[JOUEUR_X]
-                elif self.jeu.plateau[ligne][colonne] == JOUEUR_O:
-                    couleur = COULEURS[JOUEUR_O]
+    def update_interface(self):
+        """Update the game board display"""
+        for row in range(ROWS):
+            for column in range(COLUMNS):
+                color = COLORS[EMPTY]
+                if self.game.board[row][column] == PLAYER_X:
+                    color = COLORS[PLAYER_X]
+                elif self.game.board[row][column] == PLAYER_O:
+                    color = COLORS[PLAYER_O]
                     
                 self.canvas.itemconfig(
-                    self.cases[ligne][colonne],
-                    fill=couleur
+                    self.cells[row][column],
+                    fill=color
                 )
         self.canvas.update()
 
-    def lancer(self):
-        self.window.mainloop()
+    def start(self):
+        self.root.mainloop()

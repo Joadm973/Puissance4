@@ -1,5 +1,5 @@
-from gui import Puissance4GUI
+from gui import Connect4GUI
 
 if __name__ == "__main__":
-    jeu = Puissance4GUI()
-    jeu.lancer() 
+    jeu = Connect4GUI()
+    jeu.start()  # Changed from mainloop() to start()
